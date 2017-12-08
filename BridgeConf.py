@@ -28,6 +28,8 @@ class BridgeClass:
         self.Patient                = PatientClass()
         self.Joystick               = JoystickClass()
         self.Status                 = IDLE
+        self.SaveJoint              = False
+        self.StepNumber             = [1]*10
 
 class ControlClass:
     def __init__(self):
@@ -148,6 +150,9 @@ class PatientClass:
         self.Loaded         = False
         self.Filename       = ''
         self.Input          = ''
+        self.axis_max       = [0]*4
+        self.ROM_Defined    = [False]*10
+
 
 
 class ExoClass:
@@ -171,6 +176,10 @@ class BridgeConfClass:
 
         " Input values timer in milliseconds "
         self.InputValuesRefreshTmr  = 200
+
+        " Calibration Timer in milliseconds"
+        self.CalibrationTmr         = 5000
+
 
         self.FirstStart             = True
 
@@ -268,6 +277,26 @@ class BridgeConfClass:
 
             self.Patient.FixationTime       = float(Config.get(section[0],"fixation_time"))
 
+            self.Patient.ROM_Defined[0]     = Config.get(section[0],"J1min Defined")
+            self.Patient.ROM_Defined[1]     = Config.get(section[0],"J2min Defined")
+            self.Patient.ROM_Defined[2]     = Config.get(section[0],"J3min Defined")
+            self.Patient.ROM_Defined[3]     = Config.get(section[0],"J4min Defined")
+            self.Patient.ROM_Defined[4]     = Config.get(section[0],"J5min Defined")
+            self.Patient.ROM_Defined[5]     = Config.get(section[0],"J1max Defined")
+            self.Patient.ROM_Defined[6]     = Config.get(section[0],"J2max Defined")
+            self.Patient.ROM_Defined[7]     = Config.get(section[0],"J3max Defined")
+            self.Patient.ROM_Defined[8]     = Config.get(section[0],"J4max Defined")
+            self.Patient.ROM_Defined[9]     = Config.get(section[0],"J5max Defined")
+
+            self.Patient.axis_max[0]        = float(Config.get(section[0],"Joy_destra"))
+            self.Patient.axis_max[1]        = float(Config.get(section[0],"Joy_sinistra"))
+            self.Patient.axis_max[2]        = float(Config.get(section[0],"Joy_avanti"))
+            self.Patient.axis_max[3]        = float(Config.get(section[0],"Joy_indietro"))
+
+
+
+
+            #self.Patient.Filename           = filename
             self.Patient.Loaded             = True
 
             return True
@@ -328,6 +357,21 @@ class BridgeConfClass:
             Patient.l3                 = float(Config.get(section[0],"l3"))
 
             Patient.FixationTime       = float(Config.get(section[0],"fixation_time"))
+            Patient.ROM_Defined[0]     = Config.get(section[0],"J1min Defined")
+            Patient.ROM_Defined[1]     = Config.get(section[0],"J2min Defined")
+            Patient.ROM_Defined[2]     = Config.get(section[0],"J3min Defined")
+            Patient.ROM_Defined[3]     = Config.get(section[0],"J4min Defined")
+            Patient.ROM_Defined[4]     = Config.get(section[0],"J5min Defined")
+            Patient.ROM_Defined[5]     = Config.get(section[0],"J1max Defined")
+            Patient.ROM_Defined[6]     = Config.get(section[0],"J2max Defined")
+            Patient.ROM_Defined[7]     = Config.get(section[0],"J3max Defined")
+            Patient.ROM_Defined[8]     = Config.get(section[0],"J4max Defined")
+            Patient.ROM_Defined[9]     = Config.get(section[0],"J5max Defined")
+            Patient.axis_max[0]        = float(Config.get(section[0],"Joy_destra"))
+            Patient.axis_max[1]        = float(Config.get(section[0],"Joy_sinistra"))
+            Patient.axis_max[2]        = float(Config.get(section[0],"Joy_avanti"))
+            Patient.axis_max[3]        = float(Config.get(section[0],"Joy_indietro"))
+
 
             return Patient
 
@@ -469,6 +513,20 @@ class BridgeConfClass:
             Config.set(section, 'l3', Patient.l3)
 
             Config.set(section, 'fixation_time', Patient.FixationTime)
+            Config.set(section, 'J1min Defined', Patient.ROM_Defined[0])
+            Config.set(section, 'J2min Defined', Patient.ROM_Defined[1])
+            Config.set(section, 'J3min Defined', Patient.ROM_Defined[2])
+            Config.set(section, 'J4min Defined', Patient.ROM_Defined[3])
+            Config.set(section, 'J5min Defined', Patient.ROM_Defined[4])
+            Config.set(section, 'J1max Defined', Patient.ROM_Defined[5])
+            Config.set(section, 'J2max Defined', Patient.ROM_Defined[6])
+            Config.set(section, 'J3max Defined', Patient.ROM_Defined[7])
+            Config.set(section, 'J4max Defined', Patient.ROM_Defined[8])
+            Config.set(section, 'J5max Defined', Patient.ROM_Defined[9])
+            Config.set(section, 'Joy_destra', Patient.axis_max[0])
+            Config.set(section, 'Joy_sinistra', Patient.axis_max[0])
+            Config.set(section, 'Joy_avanti', Patient.axis_max[0])
+            Config.set(section, 'Joy_indietro', Patient.axis_max[0])
 
             cfgfile = open(Filename,'w')
             Config.write(cfgfile)

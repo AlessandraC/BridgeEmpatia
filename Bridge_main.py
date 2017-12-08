@@ -120,7 +120,7 @@ class MainWindow(BRIDGE_GUI.BridgeWin):
         " Initialize plots "
         self.exo3d_plot     = CreatePlot3DExo(self.exo3d_container,self.Conf)
         self.ani            = animation.FuncAnimation(self.exo3d_plot.figure, self.animate, fargs=[],interval = 500)
-
+        self.len 			= self.Conf.Patient.l1+self.Conf.Patient.l2+self.Conf.Patient.l3
         " Initialize plots "
         self.statusbar.SetFieldsCount(4)
         self.statusbar.SetStatusWidths([-23,-3,-3,-3])
@@ -302,7 +302,7 @@ class MainWindow(BRIDGE_GUI.BridgeWin):
         for i in range(0, self.Bridge.JointsNum):
             self.Bridge.Joints[i]   = Joint(i+1,
                                             self.Conf.Serial.COM[i],
-                                            self.Conf.Patient,
+                                            self.Conf.Exo,
                                             self.Conf.Exo,
                                             self.Coord)
 
@@ -354,6 +354,13 @@ class MainWindow(BRIDGE_GUI.BridgeWin):
             self.inputDescription_lbl.SetLabel(str(self.Conf.Patient.Input))
 
             self.statusbar.SetStatusText('Patient: Loaded', 2)
+
+    def joystick_calibration_command(self,event):
+
+    	dialog= DialogJoyCalibration(self, self.Conf, self.Bridge)
+    	dialog.ShowModal()
+
+
 
     " ################## "
     " #### COMMANDS #### "
@@ -595,15 +602,24 @@ class MainWindow(BRIDGE_GUI.BridgeWin):
 
         # TODO: SPOSTARE IN INIT-CONTROL
         if not __debug__:
-            " Verifica ROM giunti paziente & Run update threads "
-            for i in range(0,self.Bridge.JointsNum):
-                self.Bridge.Joints[i].Jmin = self.Bridge.Patient.Jmin[i]
-                self.Bridge.Joints[i].Jmax = self.Bridge.Patient.Jmax[i]
 
-                if not "JointUpdateThread"+str(i) in threads_list:
-                    print 'JointUpdateThread: ', i
-                    self.Bridge.JointUpdateThreads[i].start()
+            if all(i == 0 for i in self.Bridge.Patient.ROM_Defined):
+                " Verifica ROM giunti paziente & Run update threads "
+                for i in range(0,self.Bridge.JointsNum):
 
+                    #ALE: se usassimo set range?
+
+                    self.Bridge.Joints[i].Jmin = self.Bridge.Patient.Jmin[i]
+                    self.Bridge.Joints[i].Jmax = self.Bridge.Patient.Jmax[i]
+
+                    if not "JointUpdateThread"+str(i) in threads_list:
+                        print 'JointUpdateThread: ', i
+                        self.Bridge.JointUpdateThreads[i].start()
+            else:
+
+                dialog= DialogError(self, 'Please, calibrate the ROM first')
+                dialog.ShowModal()
+                return
         '''
         " TODO: da rendere pitonico (ciclo for) "
         if not "JointUpdateThread0" in threads_list:

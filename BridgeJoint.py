@@ -494,6 +494,76 @@ class Joint:
 
         return True
 
+    def joint_increment(self,step_number):
+
+        #imposto modalità di controllo in posizione, posizione assoluta (é necessario ? dopo l'inizializzazione non è già impostata?)
+
+        command = ["#1y1\r", "#1p2\r"]
+
+        try:
+            while self.WriteCmd(command) == False:
+
+                if self.Timeout:
+                    return False
+
+                time.sleep(1)
+        except Exception, e:
+            print 'WriteCmd() failed. ' + str(e)
+            return False
+
+        targetpos = "#1s%d\r" % (step_number*100)
+
+        command=[targetpos, "1A\r"]
+
+        try:
+            while self.WriteCmd(command) == False:
+                if self.Timeout:
+                    return False
+
+                time.sleep(1)
+
+        except Exception, e:
+            print 'WriteCmd() failed. ' + str(e)
+            return False
+
+        time.sleep(2)
+
+        return True
+
+    def joint_decrease(self,step_number):
+
+        command = ["#1y1\r", "#1p2\r"]
+
+        try:
+            while self.WriteCmd(command) == False:
+
+                if self.Timeout:
+                    return False
+
+                time.sleep(1)
+        except Exception, e:
+            print 'WriteCmd() failed. ' + str(e)
+            return False
+
+        targetpos = "#1s%d\r" % (step_number*-100)
+
+        command=[targetpos, "1A\r"]
+
+        try:
+            while self.WriteCmd(command) == False:
+                if self.Timeout:
+                    return False
+
+                time.sleep(1)
+
+        except Exception, e:
+            print 'WriteCmd() failed. ' + str(e)
+            return False
+
+        time.sleep(2)
+
+        return True
+
 " ####################"
 "  JOINT INIT THREAD  "
 " ####################"

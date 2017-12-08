@@ -16,6 +16,7 @@ import unicodedata
 
 from BridgeConf     import *
 from BridgeJoint    import *
+from BridgeInput    import *
 
 from serial import *
 
@@ -168,7 +169,55 @@ class DialogExoSetup(BRIDGE_GUI.Dialog_ExoSetup):
 
         joint = None
 
+class DialogJoyCalibration(BRIDGE_GUI.Dialog_JoyCalibration):
 
+    def __init__(self,parent, Conf, Bridge):
+
+        BRIDGE_GUI.Dialog_JoyCalibration.__init__(self, parent)
+
+        self.Conf = Conf
+        self.Bridge = Bridge
+
+        self.calib_buttlist= [self.calib_butt1,self.calib_butt2,self.calib_butt3,self.calib_butt4]
+
+        for i, but in zip(range(0, len(self.calib_buttlist)), self.calib_buttlist):
+            " Set widget name - Index number "
+            but.Name = str(i)
+
+
+
+    def calibrate_command (self,event):
+
+        widget = event.GetEventObject()
+        direction=int(widget.GetName())
+
+        if self.Bridge.Patient.Input== 'Joystick':
+
+            if direction==0:
+                self.dialog= Dialog_Calibration(self, 'Please, push the joystick to the right as much as you can')
+            elif direction==1:
+                self.dialog= Dialog_Calibration(self, 'Please, push the joystick to the left as much as you can')
+            elif direction==2:
+                self.dialog= Dialog_Calibration(self, 'Please, push the joystick forward as much as you can')
+            else:
+                self.dialog= Dialog_Calibration(self, 'Please, push the joystick backward as much as you can')
+
+            self.Bridge.CalibrationThread = Thread_JoyCalibClass ("CalibrationThread",self.Bridge, self.Conf, direction)
+            self.Bridge.CalibrationThread.start()
+            self.timer = wx.Timer(self)
+            self.Bind(wx.EVT_TIMER, self.end_calibration, self.timer)
+            self.timer.Start(self.Conf.CalibrationTmr)
+            self.dialog.ShowModal()
+        else: 
+
+            dialog= DialogError (self, 'Please, select the joystick as control modality')
+            dialog.ShowModal()
+
+    def end_calibration(self,msg):
+
+        self.Bridge.CalibrationThread.terminate()
+        self.dialog.Destroy()
+        self.timer.Stop()
 
 " Dialog patient setup "
 class DialogPatientSetup(BRIDGE_GUI.Dialog_PatientSetup):
@@ -176,8 +225,8 @@ class DialogPatientSetup(BRIDGE_GUI.Dialog_PatientSetup):
         BRIDGE_GUI.Dialog_PatientSetup.__init__(self, parent)
 
         self.Conf                   = Conf
-        self.Filename               = None
-
+        self.Bridge                 = Bridge
+        self.Filename               = self.Conf.Patient.Filename
         self.J1min_entry.Name       = 'AA'
         self.Jmin_entry_list        = [self.J1min_entry, self.J2min_entry, self.J3min_entry, self.J4min_entry, self.J5min_entry]
         self.Jmax_entry_list        = [self.J1max_entry, self.J2max_entry, self.J3max_entry, self.J4max_entry, self.J5max_entry]
@@ -224,6 +273,27 @@ class DialogPatientSetup(BRIDGE_GUI.Dialog_PatientSetup):
 
             self.input_choice.SetSelection(0)
 
+    def define_command(self,event):
+
+
+        if self.Bridge.Status== READY:
+            widget = event.GetEventObject()
+            joint_number=int(widget.GetName())
+            dialog= Dialog_ROM(self,joint_number,self.Conf,self.Bridge)
+            dialog.ShowModal()
+
+            if self.Bridge.SaveJoint:
+                for i, Jmin, Jmax, Jdef, Jrest in zip(range(0,5), self.Jmin_entry_list, self.Jmax_entry_list, self.Jdef_entry_list, self.Jrest_entry_list):
+                    Jmin.SetValue(str(self.Bridge.Patient.Jmin[i]))
+                    Jmax.SetValue(str(self.Bridge.Patient.Jmax[i]))
+        elif self.Bridge.Status == RUNNING:
+
+            dialog= DialogError(self, 'Attention: procedure not available. Please, disable control first')
+            dialog.ShowModal()
+        else:
+            dialog= DialogError(self, 'Please, do the initialization first')
+            dialog.ShowModal()
+
     def ok_command(self,event):
         
         for isig, Jmin, Jmax, Jdef, Jrest in zip(range(0,5), self.Jmin_entry_list, self.Jmax_entry_list, self.Jdef_entry_list, self.Jrest_entry_list):
@@ -247,7 +317,10 @@ class DialogPatientSetup(BRIDGE_GUI.Dialog_PatientSetup):
 
         self.Conf.Patient.Loaded    = True
 
-       
+        self.Bridge.Patient.Filename= self.Filename
+
+        self.Conf.SavePatient(self.Bridge.Patient.Filename, self.Conf.Patient)
+
         self.EndModal(wx.ID_OK)
         self.Destroy()
 
@@ -287,7 +360,8 @@ class DialogPatientSetup(BRIDGE_GUI.Dialog_PatientSetup):
 
 
             " Save nre patient file"
-            self.Conf.SavePatient (self.Filename, Patient)
+            self.Bridge.Patient.Filename= self.Filename
+            self.Conf.SavePatient (self.Bridge.Patient.Filename, Patient)
             self.Conf.SavePath(self.Filename)
 
 
@@ -422,3 +496,95 @@ class DialogDonning (BRIDGE_GUI.Dialog_Donning):
     def ok_command (self,event):
         self.EndModal(wx.ID_OK)
         self.Destroy()
+
+" ################## "
+" Dialog Calibration "
+" ################## "
+class Dialog_ROM(BRIDGE_GUI.Dialog_ROM_def):
+
+    def __init__(self, parent,joint_number,Conf,Bridge):
+
+        BRIDGE_GUI.Dialog_ROM_def.__init__(self,parent)
+
+
+        self.joint_number= joint_number
+        self.Bridge= Bridge
+        self.Conf  = Conf
+        if self.joint_number<5:
+            string= str('         J'+str(self.joint_number+1)+'min')
+            #self.joint= self.Bridge.Joints[self.joint_number]
+        else:
+            string= str('         J'+str(self.joint_number-4)+'max')
+            #self.joint= self.Bridge.Joints[self.joint_number-5]
+
+        self.j_label.SetLabel(string)
+        #"Leggo la posizione del giunto e la scrivo nel dialog"
+        #joint_angle=self.joint.GetPositionDeg()
+        #self.joint_label.SetLabel(str(joint_angle))
+
+
+    def go_command(self,event):
+
+
+        if self.joint_number<5:
+            ret = self.joint.joint_decrease(self.Bridge.StepNumber[self.joint_number])
+
+            if not ret:
+                error = ''
+                if joint.Timeout:
+                    error = ' | Timeout occurred'
+
+                dialog = DialogError(self, "Procedure failed %s" % error)
+                dialog.ShowModal()
+            else:
+
+                joint_angle= self.joint.GetPositionDeg()
+
+                self.joint_label.SetLabel(str(joint_angle))
+
+            self.joint = None
+
+        else:
+
+            ret = joint.joint_increment()
+            if not ret:
+                error = ''
+                if joint.Timeout:
+                    error = ' | Timeout occurred'
+
+                dialog = DialogError(self, "Procedure failed %s" % error)
+                dialog.ShowModal()
+            else:
+
+                joint_angle = self.joint.GetPositionDeg()
+                self.joint_label.SetLabel(str(joint_angle))
+
+
+            self.joint = None
+
+        self.Bridge.StepNumber[self.joint_number]+=1
+
+    def save_command(self,event):
+
+        self.Bridge.SaveJoint= True
+
+        # if self.joint_number< 5:
+
+        #      self.Conf.Patient.Jmin[self.joint_number]= int(unicodedata.normalize('NFKD',self.joint_label.GetValue()).encode("ascii","ignore"))
+        # else:
+
+        #      self.Conf.Patient.Jmax[self.joint_number-5]= int(unicodedata.normalize('NFKD',self.joint_label.GetValue()).encode("ascii","ignore"))
+
+
+        self.Conf.Patient.ROM_Defined[self.joint_number] = True
+        self.Bridge.StepNumber[self.joint_number]= 1
+        self.Bridge.Patient= self.Conf.Patient
+        self.Destroy()
+
+class Dialog_Calibration(BRIDGE_GUI.Dialog_Calibration):
+
+    def __init__(self, parent, message):
+        BRIDGE_GUI.Dialog_Calibration.__init__(self,parent)
+
+        self.Calib_label.SetLabel(message)
+

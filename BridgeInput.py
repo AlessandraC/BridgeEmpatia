@@ -5,6 +5,7 @@ import time
 import pygame
 import math
 from BridgeConf import *
+from BridgeDialog import *
 import winsound     # Audio Feedback
 import subprocess
 
@@ -128,10 +129,19 @@ class Thread_InputClass(threading.Thread):
 
                             if self.Bridge.Joystick.Mode == 0:
                                 if i == 0:
-                                    self.Coord.p0[i] = axis * 1.2
+                                    if axis > 0:
+                                        self.Coord.p0[1] = axis/self.Bridge.Patient.axis_max[0] #normalizzazione destra
+                                    else:
+
+                                        self.Coord.p0[1] = axis/self.Bridge.Patient.axis_max[1] #normalizzazione sinistra
                                 else:
 
-                                    self.Coord.p0[i] = -axis * 1.2
+                                    if axis > 0:
+
+                                        self.Coord.p0[0] = -axis/self.Bridge.Patient.axis_max[3] #normalizzazione indietro
+                                    else:
+
+                                        self.Coord.p0[0] = -axis/self.Bridge.Patient.axis_max[2] #normalizzazione avanti
 
                                 self.Coord.p0[2] = 0.0
                                 self.Coord.p0[3] = 0.0
@@ -140,13 +150,27 @@ class Thread_InputClass(threading.Thread):
                                     #self.Coord.p0[3] = axis * 1.2
                                     self.Coord.p0[3] = 0
                                 else:
-                                    self.Coord.p0[2] = -axis * 1.2
+
+                                    if axis > 0:
+                                        self.Coord.p0[2] = -axis/self.Bridge.Patient.axis_max[3] #normalizzazione discesa
+                                    else:
+                                        self.Coord.p0[2] = -axis/self.Bridge.Patient.axis_max[2] #normalizzazione salita
                                     
 
                                 self.Coord.p0[0] = 0.0
                                 self.Coord.p0[1] = 0.0
 
-                        # print self.Coord.p0
+                            for i in range(0,3):
+
+                                if self.Coord.p0[i]>1:
+
+                                    self.Coord.p0[i]=1
+
+                                elif self.Coord.p0[i]<-1:
+
+                                    self.Coord.p0[i]= -1
+
+                        #print self.Coord.p0
 
                     '''elif event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYBUTTONUP:
                         self.Bridge.Joystick.Mode                 = self.PyJoystick.get_button(1)
@@ -434,5 +458,48 @@ class Thread_InputClass(threading.Thread):
     def terminate(self):
         " Exit the thread "
         self.Running = False
+
+class Thread_JoyCalibClass(threading.Thread):
+
+    def __init__(self, Name, Bridge, Conf, direction):
+
+        threading.Thread.__init__(self)
+        self.Runnig = False
+        self.Bridge = Bridge
+        self.Conf   = Conf
+        self.direction= direction
+
+        if self.direction <= 1:
+            i=0
+        else:
+            i=1
+        self.Bridge.Patient.axis_max[direction]= 0
+
+    def run():
+
+        self.Running = True
+
+        try:
+            self.PyJoystick = pygame.joystick.Joystick(0)
+            self.PyJoystick.init()
+
+        except Exception, e:
+
+            print '# ERROR: joystick failure | ' + str(e)
+            return False
+
+        while self.Running:
+
+            axis = (self.PyJoystick.get_axis(i) - self.Bridge.Joystick.AxisOffset[i])
+
+            if abs(axis)>self.Bridge.Patient.axis_max[Direction]:
+
+                self.Bridge.Patient.axis_max[direction]= abs(axis)
+
+    def terminate(self):
+
+        self.Running = False
+        self.Conf.SavePatient(self.Bridge.Patient.Filename, self.Bridge.Patient)
+
 
 
